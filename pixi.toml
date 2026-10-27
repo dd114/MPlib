@@ -20,15 +20,17 @@ ninja = "*"
 pybind11 = "*"
 # C++ dependencies
 assimp = "*"
-boost-cpp = "*"
+libboost-devel = "*"
 eigen = "*"
 fcl = "*"
 ompl = "*"
 orocos-kdl = "*"
-pinocchio = "*"
+pinocchio = ">=3,<4"
 urdfdom = "*"
 # Runtime Python libraries
-numpy = "*"
+numpy = ">=2"
+pytest = "*"
+trimesh = "*"
 
 [pypi-dependencies]
 mplib = { path = "./", editable = true }
