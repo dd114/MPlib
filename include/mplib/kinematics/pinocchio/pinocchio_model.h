@@ -359,7 +359,7 @@ class PinocchioModelTpl {
   void init(const urdf::ModelInterfaceSharedPtr &urdf_model, const Vector3<S> &gravity);
 
   void dfsParseTree(const urdf::LinkConstSharedPtr &link,
-                    pinocchio::UrdfVisitorBase<S> &visitor);
+                    ::pinocchio::urdf::details::UrdfVisitorBase &visitor);
 
   VectorX<S> qposUser2Pinocchio(const VectorX<S> &q_user) const;
 
