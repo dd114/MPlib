@@ -9,7 +9,6 @@
 
 #include <pinocchio/multibody/data.hpp>
 #include <urdf_model/types.h>
-#include <urdf_world/types.h>
 
 #include "mplib/kinematics/pinocchio/types.h"
 #include "mplib/macros/class_forward.h"
