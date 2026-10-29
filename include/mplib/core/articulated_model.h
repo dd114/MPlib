@@ -189,6 +189,16 @@ class ArticulatedModelTpl {
   Pose<S> getBasePose() const { return Pose<S>(base_pose_); }
 
   /**
+   * Get the global pose of a link in world frame (base_pose * link_pose).
+   *
+   * @param index: index of the link
+   * @return: global pose of the link
+   */
+  Isometry3<S> getLinkGlobalPose(size_t index) const {
+    return base_pose_ * pinocchio_model_->getLinkPose(index);
+  }
+
+  /**
    * Set the base pose of the robot and update all collision links in the ``FCLModel``.
    *
    * @param pose: base pose of the robot

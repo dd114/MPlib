@@ -2,12 +2,6 @@
 
 namespace mplib {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_ATTACHED_BODY(S) template class AttachedBodyTpl<S>
-
-DEFINE_TEMPLATE_ATTACHED_BODY(float);
-DEFINE_TEMPLATE_ATTACHED_BODY(double);
-
 template <typename S>
 AttachedBodyTpl<S>::AttachedBodyTpl(const std::string &name, const FCLObjectPtr &object,
                                     const ArticulatedModelPtr &attached_articulation,
@@ -16,10 +10,14 @@ AttachedBodyTpl<S>::AttachedBodyTpl(const std::string &name, const FCLObjectPtr 
     : name_(name),
       object_(object),
       attached_articulation_(attached_articulation),
-      pinocchio_model_(attached_articulation->getPinocchioModel()),
+      pinocchio_model_(attached_articulation ? attached_articulation->getPinocchioModel()
+                                             : nullptr),
       attached_link_id_(attached_link_id),
       pose_(pose.toIsometry()),
       touch_links_(touch_links) {
+  if (!object_) throw std::invalid_argument("object cannot be null");
+  if (!attached_articulation_)
+    throw std::invalid_argument("attached_articulation cannot be null");
   updatePose();  // updates global pose using link_pose and attached_pose
 }
 
@@ -30,5 +28,11 @@ void AttachedBodyTpl<S>::updatePose() const {
   for (size_t i = 0; i < object_->shapes.size(); i++)
     object_->shapes[i]->setTransform(object_pose * object_->shape_poses[i]);
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_ATTACHED_BODY(S) template class AttachedBodyTpl<S>
+
+DEFINE_TEMPLATE_ATTACHED_BODY(float);
+DEFINE_TEMPLATE_ATTACHED_BODY(double);
 
 }  // namespace mplib

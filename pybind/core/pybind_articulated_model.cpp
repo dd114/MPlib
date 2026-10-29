@@ -106,6 +106,11 @@ void build_pyarticulated_model(py::module &pymp) {
                     DOC(mplib, ArticulatedModelTpl, base_pose))
       .def("get_base_pose", &ArticulatedModel::getBasePose,
            DOC(mplib, ArticulatedModelTpl, getBasePose))
+      .def("get_link_global_pose",
+           [](const ArticulatedModel &self, size_t index) {
+             return Pose<S>(self.getLinkGlobalPose(index));
+           },
+           py::arg("index"))
       .def("set_base_pose", &ArticulatedModel::setBasePose, py::arg("pose"),
            DOC(mplib, ArticulatedModelTpl, setBasePose))
 

@@ -8,20 +8,19 @@
 
 namespace mplib {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_PLANNING_WORLD(S) template class PlanningWorldTpl<S>
-
-DEFINE_TEMPLATE_PLANNING_WORLD(float);
-DEFINE_TEMPLATE_PLANNING_WORLD(double);
-
 template <typename S>
 PlanningWorldTpl<S>::PlanningWorldTpl(
     const std::vector<ArticulatedModelPtr> &articulations,
     const std::vector<FCLObjectPtr> &objects)
     : acm_(std::make_shared<AllowedCollisionMatrix>()) {
-  for (const auto &art : articulations)
+  for (const auto &art : articulations) {
+    if (!art) throw std::invalid_argument("articulation cannot be null");
     planned_articulation_map_[art->getName()] = articulation_map_[art->getName()] = art;
-  for (const auto &object : objects) object_map_[object->name] = object;
+  }
+  for (const auto &object : objects) {
+    if (!object) throw std::invalid_argument("object cannot be null");
+    object_map_[object->name] = object;
+  }
 }
 
 template <typename S>
@@ -42,6 +41,7 @@ std::vector<ArticulatedModelTplPtr<S>> PlanningWorldTpl<S>::getPlannedArticulati
 template <typename S>
 void PlanningWorldTpl<S>::addArticulation(const ArticulatedModelPtr &model,
                                           bool planned) {
+  if (!model) throw std::invalid_argument("model cannot be null");
   articulation_map_[model->getName()] = model;
   setArticulationPlanned(model->getName(), planned);
 }
@@ -79,6 +79,7 @@ std::vector<std::string> PlanningWorldTpl<S>::getObjectNames() const {
 template <typename S>
 void PlanningWorldTpl<S>::addObject(const std::string &name,
                                     const CollisionObjectPtr &collision_object) {
+  if (!collision_object) throw std::invalid_argument("collision_object cannot be null");
   addObject(
       std::make_shared<FCLObject>(name, Pose<S>(collision_object->getTransform()),
                                   std::vector<CollisionObjectPtr> {collision_object},
@@ -111,9 +112,9 @@ template <typename S>
 void PlanningWorldTpl<S>::attachObject(const std::string &name,
                                        const std::string &art_name, int link_id,
                                        const std::vector<std::string> &touch_links) {
+  const auto &art = planned_articulation_map_.at(art_name);
   const auto T_world_obj = object_map_.at(name)->pose;
-  const auto T_world_link =
-      planned_articulation_map_.at(art_name)->getPinocchioModel()->getLinkPose(link_id);
+  const auto T_world_link = art->getLinkGlobalPose(link_id);
   attachObject(name, art_name, link_id, Pose<S>(T_world_link.inverse() * T_world_obj),
                touch_links);
 }
@@ -121,9 +122,9 @@ void PlanningWorldTpl<S>::attachObject(const std::string &name,
 template <typename S>
 void PlanningWorldTpl<S>::attachObject(const std::string &name,
                                        const std::string &art_name, int link_id) {
+  const auto &art = planned_articulation_map_.at(art_name);
   const auto T_world_obj = object_map_.at(name)->pose;
-  const auto T_world_link =
-      planned_articulation_map_.at(art_name)->getPinocchioModel()->getLinkPose(link_id);
+  const auto T_world_link = art->getLinkGlobalPose(link_id);
   attachObject(name, art_name, link_id, Pose<S>(T_world_link.inverse() * T_world_obj));
 }
 
@@ -552,5 +553,11 @@ WorldDistanceResultTpl<S> PlanningWorldTpl<S>::distance(
   const auto ret2 = distanceRobot(request);
   return ret1.min_distance < ret2.min_distance ? ret1 : ret2;
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_PLANNING_WORLD(S) template class PlanningWorldTpl<S>
+
+DEFINE_TEMPLATE_PLANNING_WORLD(float);
+DEFINE_TEMPLATE_PLANNING_WORLD(double);
 
 }  // namespace mplib

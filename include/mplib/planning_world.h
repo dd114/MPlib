@@ -155,7 +155,10 @@ class PlanningWorldTpl {
    *
    * @param fcl_obj: FCLObject to be added
    */
-  void addObject(const FCLObjectPtr &fcl_obj) { object_map_[fcl_obj->name] = fcl_obj; }
+  void addObject(const FCLObjectPtr &fcl_obj) {
+    if (!fcl_obj) throw std::invalid_argument("fcl_obj cannot be null");
+    object_map_[fcl_obj->name] = fcl_obj;
+  }
 
   /**
    * Adds an non-articulated object (``CollisionObjectPtr``) with given name to world
