@@ -87,6 +87,13 @@ class ArticulatedModel:
 
         :return: base pose of the robot
         """
+    def get_link_global_pose(self, index: int) -> Pose:
+        """
+        Get the global pose of a link in the world frame (base_pose * link_pose).
+
+        :param index: index of the link
+        :return: global pose of the link in the world frame
+        """
     def get_fcl_model(self) -> collision_detection.fcl.FCLModel:
         """
         Get the underlying FCL model.

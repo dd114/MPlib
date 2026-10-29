@@ -90,7 +90,14 @@ void build_utils_pose(py::module &pymp) {
       .def_property(
           "q",
           [](const Pose<S> &pose) {
-            return Vector4<S> {pose.q.w(), pose.q.x(), pose.q.y(), pose.q.z()};
+            py::array_t<S> arr(4);
+            auto r = arr.mutable_unchecked();
+            r(0) = pose.q.w();
+            r(1) = pose.q.x();
+            r(2) = pose.q.y();
+            r(3) = pose.q.z();
+            arr.attr("flags").attr("writeable") = false;
+            return arr;
           },
           [](Pose<S> &pose, const Vector4<S> &q) {
             pose.q = Quaternion<S> {q(0), q(1), q(2), q(3)}.normalized();
@@ -105,7 +112,14 @@ void build_utils_pose(py::module &pymp) {
       .def(
           "get_q",
           [](const Pose<S> &pose) {
-            return Vector4<S> {pose.q.w(), pose.q.x(), pose.q.y(), pose.q.z()};
+            py::array_t<S> arr(4);
+            auto r = arr.mutable_unchecked();
+            r(0) = pose.q.w();
+            r(1) = pose.q.x();
+            r(2) = pose.q.y();
+            r(3) = pose.q.z();
+            arr.attr("flags").attr("writeable") = false;
+            return arr;
           },
           DOC(mplib, Pose, get_q))
 
