@@ -13,18 +13,12 @@
 
 namespace mplib::planning::ompl {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_OMPL_PLANNER(S) template class OMPLPlannerTpl<S>
-
-DEFINE_TEMPLATE_OMPL_PLANNER(float);
-DEFINE_TEMPLATE_OMPL_PLANNER(double);
-
 #define PI 3.14159265359
 
 template <typename S>
 OMPLPlannerTpl<S>::OMPLPlannerTpl(const PlanningWorldTplPtr<S> &world) : world_(world) {
-  // default is constrained space, builds the ambient space for later
-  buildConstrainedAmbientStateSpace();
+  if (!world_)
+    throw std::invalid_argument("world cannot be null");
   buildCompoundStateSpace();
 }
 
@@ -170,22 +164,28 @@ ob::GoalStatesPtr OMPLPlannerTpl<S>::makeGoalStates(
     const std::vector<VectorX<S>> &goal_states) const {
   auto goals = std::make_shared<ob::GoalStates>(si_);
 
-  int tot_enum_states = 1, tot_goal_state = 0;
-  for (size_t i = 0; i < dim_; i++) tot_enum_states *= 3;
+  std::vector<size_t> multi_turn_joints;
+  for (size_t j = 0; j < dim_; j++) {
+    if (is_revolute_[j] && (upper_joint_limits_[j] - lower_joint_limits_[j] > 2 * PI))
+      multi_turn_joints.push_back(j);
+  }
+
+  size_t k = multi_turn_joints.size();
+  size_t tot_enum_states = 1;
+  for (size_t i = 0; i < k && i < 8; i++) tot_enum_states *= 3;
 
   for (size_t ii = 0; ii < goal_states.size(); ii++) {
-    for (int i = 0; i < tot_enum_states; i++) {
+    for (size_t i = 0; i < tot_enum_states; i++) {
       std::vector<double> tmp_state;
-      int tmp = i;
+      tmp_state.reserve(dim_);
+      for (size_t j = 0; j < dim_; j++) tmp_state.push_back(goal_states[ii](j));
+
+      size_t tmp = i;
       bool flag = true;
-      for (size_t j = 0; j < dim_; j++) {
-        tmp_state.push_back(goal_states[ii](j));
+      for (size_t idx = 0; idx < k && idx < 8; idx++) {
+        size_t j = multi_turn_joints[idx];
         int dir = tmp % 3;
         tmp /= 3;
-        if (dir != 0 && is_revolute_[j] == false) {
-          flag = false;
-          break;
-        }
         if (dir == 1) {
           if (tmp_state[j] - 2 * PI > lower_joint_limits_[j])
             tmp_state[j] -= 2 * PI;
@@ -206,7 +206,6 @@ ob::GoalStatesPtr OMPLPlannerTpl<S>::makeGoalStates(
         ob::ScopedState<> goal(state_space_);
         goal = tmp_state;
         goals->addState(goal);
-        tot_goal_state += 1;
       }
     }
   }
@@ -228,7 +227,7 @@ std::pair<std::string, MatrixX<S>> OMPLPlannerTpl<S>::plan(
     buildCompoundStateSpace(fixed_joints);
   } else if (constraint_function != nullptr &&
              constraint_jacobian != nullptr) {  // we have a constraint
-    if (last_fixed_joints_.size()) buildConstrainedAmbientStateSpace();
+    if (!ambient_space_ || last_fixed_joints_.size()) buildConstrainedAmbientStateSpace();
     auto general_constraint = std::make_shared<GeneralConstraint>(
         dim_, constraint_function, constraint_jacobian);
     general_constraint->setTolerance(constraint_tolerance);
@@ -242,6 +241,9 @@ std::pair<std::string, MatrixX<S>> OMPLPlannerTpl<S>::plan(
     ss_ = std::make_shared<og::SimpleSetup>(si_);
   }
   last_fixed_joints_ = fixed_joints;
+
+  if (goal_states.empty())
+    throw std::invalid_argument("goal_states must contain at least one target configuration");
 
   VectorX<S> reduced_start_state = removeFixedJoints<S>(fixed_joints, start_state);
   std::vector<VectorX<S>> reduced_goal_states;
@@ -339,5 +341,11 @@ MatrixX<S> OMPLPlannerTpl<S>::simplifyPath(const MatrixX<S> &path) const {
   }
   return ret;
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_OMPL_PLANNER(S) template class OMPLPlannerTpl<S>
+
+DEFINE_TEMPLATE_OMPL_PLANNER(float);
+DEFINE_TEMPLATE_OMPL_PLANNER(double);
 
 }  // namespace mplib::planning::ompl
