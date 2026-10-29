@@ -169,9 +169,14 @@ class Planner:
         if articulation is None:
             articulation = self.robot
 
-        if (ndim := len(qpos)) == articulation.get_move_group_qpos_dim():
+        if len(qpos) == articulation.get_move_group_qpos_dim():
             tmp = articulation.get_qpos().copy()
-            tmp[:ndim] = qpos
+            indices = (
+                self.move_group_joint_indices
+                if articulation == self.robot
+                else articulation.get_move_group_joint_indices()
+            )
+            tmp[indices] = qpos
             qpos = tmp
 
         assert len(qpos) == len(self.joint_limits), (
@@ -270,9 +275,19 @@ class Planner:
         """
         if mask is None:
             mask = []
+        elif len(mask) == len(self.move_group_joint_indices):
+            full_mask = [False] * len(self.joint_limits)
+            for mg_idx, val in zip(self.move_group_joint_indices, mask):
+                full_mask[mg_idx] = bool(val)
+            mask = full_mask
+        mask = list(mask)
+        mask_np = (
+            np.array(mask, dtype=bool) if len(mask) > 0 else np.array([], dtype=bool)
+        )
 
         move_link_idx = self.link_name_2_idx[self.move_group]
         move_joint_idx = self.move_group_joint_indices
+        start_qpos = self.pad_move_group_qpos(start_qpos)
         self.robot.set_qpos(start_qpos, True)
 
         min_dist = 1e9
@@ -318,7 +333,8 @@ class Planner:
                         q_goals.append(ik_qpos)
 
             qpos = self.pinocchio_model.get_random_configuration()
-            qpos[mask] = start_qpos[mask]  # use start_qpos for disabled joints
+            if len(mask_np) > 0 and mask_np.any():
+                qpos[mask_np] = start_qpos[mask_np]  # use start_qpos for disabled joints
 
         if len(q_goals) != 0:
             status = "Success"
@@ -381,7 +397,8 @@ class Planner:
         jnt_traj = instance.compute_trajectory()
         if jnt_traj is None:
             raise RuntimeError("Fail to parameterize path")
-        ts_sample = np.linspace(0, jnt_traj.duration, int(jnt_traj.duration / step))  # type: ignore
+        n_samples = max(2, int(np.ceil(jnt_traj.duration / step)) + 1)
+        ts_sample = np.linspace(0, jnt_traj.duration, n_samples)
         qs_sample = jnt_traj(ts_sample)
         qds_sample = jnt_traj(ts_sample, 1)
         qdds_sample = jnt_traj(ts_sample, 2)
@@ -572,11 +589,11 @@ class Planner:
         if fixed_joint_indices is None:
             fixed_joint_indices = []
 
+        current_qpos = self.pad_move_group_qpos(current_qpos)
         if fix_joint_limits:
             current_qpos = np.clip(
                 current_qpos, self.joint_limits[:, 0], self.joint_limits[:, 1]
             )
-        current_qpos = self.pad_move_group_qpos(current_qpos)
 
         self.robot.set_qpos(current_qpos, True)
         collisions = self.planning_world.check_collision()
@@ -587,11 +604,33 @@ class Planner:
 
         move_joint_idx = self.move_group_joint_indices
 
-        goal_qpos_ = [goal_qposes[i][move_joint_idx] for i in range(len(goal_qposes))]
+        if isinstance(goal_qposes, np.ndarray) and goal_qposes.ndim == 1:
+            goal_qposes = [goal_qposes]
+        elif not isinstance(goal_qposes, (list, tuple)) and isinstance(
+            goal_qposes, np.ndarray
+        ) and goal_qposes.ndim == 2:
+            goal_qposes = list(goal_qposes)
+
+        if len(goal_qposes) == 0:
+            raise ValueError("goal_qposes must contain at least one goal configuration")
+
+        goal_qpos_ = [
+            self.pad_move_group_qpos(goal)[move_joint_idx] for goal in goal_qposes
+        ]
 
         fixed_joints = set()
         for joint_idx in fixed_joint_indices:
-            fixed_joints.add(FixedJoint(0, joint_idx, current_qpos[joint_idx]))
+            if joint_idx in move_joint_idx:
+                mg_joint_idx = move_joint_idx.index(joint_idx)
+            elif 0 <= joint_idx < len(move_joint_idx):
+                mg_joint_idx = joint_idx
+            else:
+                raise ValueError(
+                    f"Fixed joint index {joint_idx} is outside move group joints {move_joint_idx}"
+                )
+            fixed_joints.add(
+                FixedJoint(0, mg_joint_idx, current_qpos[move_joint_idx[mg_joint_idx]])
+            )
 
         assert len(current_qpos[move_joint_idx]) == len(goal_qpos_[0])
         status, path = self.planner.plan(
@@ -784,19 +823,40 @@ class Planner:
         move_joint_idx = self.move_group_joint_indices
         path = [np.copy(current_qpos[move_joint_idx])]
 
+        if np.linalg.norm(omega) < 1e-6:
+            times, pos, vel, acc, duration = self.TOPP(
+                np.vstack([path[0], path[0]]), time_step
+            )
+            return {
+                "status": "Success",
+                "time": times,
+                "position": pos,
+                "velocity": vel,
+                "acceleration": acc,
+                "duration": duration,
+            }
+
         while True:
             self.pinocchio_model.compute_full_jacobian(current_qpos)
             J = self.pinocchio_model.get_link_jacobian(ee_index, local=False)
-            delta_q = np.linalg.pinv(J) @ omega
-            delta_q *= qpos_step / (np.linalg.norm(delta_q))
-            delta_twist = J @ delta_q
-
-            flag = False
-            if np.linalg.norm(delta_twist) > np.linalg.norm(omega):
-                ratio = np.linalg.norm(omega) / np.linalg.norm(delta_twist)
-                delta_q = delta_q * ratio
-                delta_twist = delta_twist * ratio
+            norm_omega = np.linalg.norm(omega)
+            if norm_omega < 1e-6:
                 flag = True
+                delta_q = np.zeros((len(current_qpos), 1))
+                delta_twist = np.zeros(6)
+            else:
+                delta_q = np.linalg.pinv(J) @ omega
+                norm_delta_q = np.linalg.norm(delta_q)
+                if norm_delta_q > 1e-9:
+                    delta_q *= qpos_step / norm_delta_q
+                delta_twist = J @ delta_q
+
+                flag = False
+                if np.linalg.norm(delta_twist) > norm_omega:
+                    ratio = norm_omega / np.linalg.norm(delta_twist)
+                    delta_q = delta_q * ratio
+                    delta_twist = delta_twist * ratio
+                    flag = True
 
             current_qpos += delta_q.reshape(-1)
             omega -= delta_twist
@@ -815,7 +875,7 @@ class Planner:
             self.planning_world.set_qpos_all(current_qpos[move_joint_idx])
             collide = self.planning_world.is_state_colliding()
 
-            if np.linalg.norm(delta_twist) < 1e-4 or collide or not within_joint_limit:
+            if collide or not within_joint_limit:
                 return {"status": "screw plan failed"}
 
             path.append(np.copy(current_qpos[move_joint_idx]))
@@ -834,3 +894,6 @@ class Planner:
                     "acceleration": acc,
                     "duration": duration,
                 }
+
+            if np.linalg.norm(delta_twist) < 1e-4:
+                return {"status": "screw plan failed"}
