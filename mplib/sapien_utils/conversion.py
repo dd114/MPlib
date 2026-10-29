@@ -324,10 +324,9 @@ class SapienPlanningWorld(PlanningWorld):
                 # FCL Capsule has z-axis along capsule height
                 shape_poses[-1] *= Pose(q=euler2quat(0, np.pi / 2, 0))
             elif isinstance(shape, PhysxCollisionShapeConvexMesh):
-                assert np.allclose(
-                    shape.scale, 1.0
-                ), f"Not unit scale {shape.scale}, need to rescale vertices?"
-                c_geom = Convex(vertices=shape.vertices, faces=shape.triangles)
+                scale = getattr(shape, "scale", np.ones(3))
+                scaled_vertices = shape.vertices * scale
+                c_geom = Convex(vertices=scaled_vertices, faces=shape.triangles)
             elif isinstance(shape, PhysxCollisionShapeCylinder):
                 c_geom = Cylinder(radius=shape.radius, lz=shape.half_length * 2)
                 # NOTE: physx Cylinder has x-axis along cylinder height
@@ -344,9 +343,11 @@ class SapienPlanningWorld(PlanningWorld):
             elif isinstance(shape, PhysxCollisionShapeSphere):
                 c_geom = Sphere(radius=shape.radius)
             elif isinstance(shape, PhysxCollisionShapeTriangleMesh):
+                scale = getattr(shape, "scale", np.ones(3))
+                scaled_vertices = shape.vertices * scale
                 c_geom = BVHModel()
                 c_geom.begin_model()
-                c_geom.add_sub_model(vertices=shape.vertices, faces=shape.triangles)  # type: ignore
+                c_geom.add_sub_model(vertices=scaled_vertices, faces=shape.triangles)  # type: ignore
                 c_geom.end_model()
             else:
                 raise TypeError(f"Unknown shape type: {type(shape)}")
