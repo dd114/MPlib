@@ -23,7 +23,7 @@ RUN git clone --single-branch -b v2.1 --depth 1 https://github.com/danfis/libccd
 # Reference: https://www.boost.org/doc/libs/1_76_0/more/getting_started/unix-variants.html#easy-build-and-install
 # NOTE(jigu): there are compilation errors when boost.python is also built.
 # To build boost.python, maybe we need to refer to https://www.boost.org/doc/libs/1_35_0/libs/python/doc/building.html#examples
-RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.gz && \
+RUN wget https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz && \
     tar -xf boost_1_84_0.tar.gz && \
     rm boost_1_84_0.tar.gz && \
     cd boost_1_84_0 && ./bootstrap.sh --without-libraries=python && ./b2 install && \

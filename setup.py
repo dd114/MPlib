@@ -30,9 +30,13 @@ class CMakeBuild(build_ext):
         # Can be set with Conda-Build, for example.
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
 
+        build_temp = Path(ext.sourcedir) / "build"
+        if not build_temp.exists():
+            build_temp.mkdir(parents=True)
+
         # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
         cmake_args = [
-            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extdir}{os.sep}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={build_temp}{os.sep}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={cfg}",  # not used on MSVC, but no harm
         ]
@@ -61,7 +65,7 @@ class CMakeBuild(build_ext):
         # across all generators.
         # self.parallel is a Python 3 only way to set parallel jobs by hand
         # using -j in the build_ext call, not supported by pip or PyPA-build.
-        self.parallel = 16
+        self.parallel = min(4, os.cpu_count() or 1)
         if (
             "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ
             and hasattr(self, "parallel")
@@ -69,10 +73,6 @@ class CMakeBuild(build_ext):
         ):
             # CMake 3.12+ only.
             build_args += [f"-j{self.parallel}"]
-
-        build_temp = Path(self.build_temp) / ext.name
-        if not build_temp.exists():
-            build_temp.mkdir(parents=True)
 
         print(cmake_args, build_args)
 
@@ -83,13 +83,17 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", ".", *build_args], cwd=build_temp, check=True
         )
 
-        if getattr(self, "editable_mode", False) or self.inplace:
-            pkg_dir = Path(ext.sourcedir) / "mplib"
-            for file in extdir.glob("pymp*"):
-                if file.is_file():
-                    dest = pkg_dir / file.name
-                    if file.resolve() != dest.resolve():
-                        shutil.copy2(file, dest)
+        extdir.mkdir(parents=True, exist_ok=True)
+        pkg_dir = Path(ext.sourcedir) / "mplib"
+        for file in build_temp.glob("pymp*.so"):
+            if file.is_file():
+                dest_ext = extdir / file.name
+                if file.resolve() != dest_ext.resolve():
+                    shutil.copy2(file, dest_ext)
+                if getattr(self, "editable_mode", False) or self.inplace:
+                    dest_pkg = pkg_dir / file.name
+                    if file.resolve() != dest_pkg.resolve():
+                        shutil.copy2(file, dest_pkg)
 
 
 setup(
