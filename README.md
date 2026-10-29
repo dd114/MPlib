@@ -19,10 +19,29 @@ functionalities in robot manipulation.
 
 Pre-built pip packages support Ubuntu 20.04+ with Python 3.8+.
 
-```
+```bash
 pip install mplib
+```
+
+### Developer Setup & Building from Source
+
+MPlib supports reproducible development workflows using [Pixi](https://pixi.sh/):
+
+```bash
+# Clone the repository
+git clone https://github.com/haosulab/MPlib.git && cd MPlib
+
+# Install development environment and run tests
+pixi run pytest tests
 ```
 
 ## Usage
 
 See our [tutorial](https://motion-planning-lib.readthedocs.io/latest/tutorials/getting_started.html) for detailed usage and examples.
+
+### Key Capabilities & Robustness Guarantees
+
+- **Decoupled Kinematics & Planning**: Powered by Pinocchio 3.x, FCL/Coal collision detection, and OMPL.
+- **Robust Coordinate Frames**: Attached bodies track robot link positions in the world frame regardless of articulation base displacement.
+- **High-DoF & Continuous Joints**: Supports high-DoF robotic chains (>= 20 DoF) without goal state enumeration overflows, and unconstrained planning on continuous revolute joints.
+- **Safety Guards**: Strict null and type guards across C++ and Pybind11 boundaries, preventing silent memory corruption or segmentation faults.
