@@ -381,20 +381,26 @@ void build_pyfcl(py::module &m) {
        "collide",
        [](const CollisionObject *obj1, const CollisionObject *obj2,
           const CollisionRequest &request) {
+         if (!obj1 || !obj2)
+           throw std::invalid_argument("CollisionObject pointers cannot be null");
          CollisionResult result;
          fcl::collide(obj1, obj2, request, result);
          return result;
        },
-       py::arg("obj1"), py::arg("obj2"), py::arg("request") = CollisionRequest())
+       py::arg("obj1").none(false), py::arg("obj2").none(false),
+       py::arg("request") = CollisionRequest())
       .def(
           "distance",
           [](const CollisionObject *obj1, const CollisionObject *obj2,
              const DistanceRequest &request) {
+            if (!obj1 || !obj2)
+              throw std::invalid_argument("CollisionObject pointers cannot be null");
             DistanceResult result;
             fcl::distance(obj1, obj2, request, result);
             return result;
           },
-          py::arg("obj1"), py::arg("obj2"), py::arg("request") = DistanceRequest());
+          py::arg("obj1").none(false), py::arg("obj2").none(false),
+          py::arg("request") = DistanceRequest());
 }
 
 }  // namespace mplib::collision_detection::fcl

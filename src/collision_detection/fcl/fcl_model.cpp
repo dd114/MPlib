@@ -18,12 +18,6 @@
 
 namespace mplib::collision_detection::fcl {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_FCL_MODEL(S) template class FCLModelTpl<S>
-
-DEFINE_TEMPLATE_FCL_MODEL(float);
-DEFINE_TEMPLATE_FCL_MODEL(double);
-
 template <typename S>
 FCLModelTpl<S>::FCLModelTpl(const std::string &urdf_filename, bool convex, bool verbose)
     : use_convex_(convex), verbose_(verbose) {
@@ -74,11 +68,11 @@ std::unique_ptr<FCLModelTpl<S>> FCLModelTpl<S>::createFromURDFString(
 template <typename S>
 void FCLModelTpl<S>::init(const urdf::ModelInterfaceSharedPtr &urdf_model,
                           const std::string &package_dir) {
+  if (not urdf_model)
+    throw std::invalid_argument("The XML stream does not contain a valid URDF model.");
   urdf_model_ = urdf_model;
   name_ = urdf_model->getName();
   package_dir_ = package_dir;
-  if (not urdf_model_)
-    throw std::invalid_argument("The XML stream does not contain a valid URDF model.");
   urdf::LinkConstSharedPtr root_link = urdf_model_->getRoot();
   dfsParseTree(root_link, "root's parent");
 
@@ -391,5 +385,11 @@ WorldDistanceResultTpl<S> FCLModelTpl<S>::distanceWith(
     }
   return ret;
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_FCL_MODEL(S) template class FCLModelTpl<S>
+
+DEFINE_TEMPLATE_FCL_MODEL(float);
+DEFINE_TEMPLATE_FCL_MODEL(double);
 
 }  // namespace mplib::collision_detection::fcl

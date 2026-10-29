@@ -94,6 +94,7 @@ bool addChildrenToTree(const urdf::LinkConstSharedPtr &root, KDL::Tree &tree,
 
 bool treeFromUrdfModel(const urdf::ModelInterfaceSharedPtr &urdf_model, KDL::Tree &tree,
                        std::string &tree_root_name, bool verbose) {
+  if (!urdf_model) return false;
   const urdf::LinkConstSharedPtr root_link = urdf_model->getRoot();
   if (!root_link) return false;
 

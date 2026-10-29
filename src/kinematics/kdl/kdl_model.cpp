@@ -19,12 +19,6 @@
 
 namespace mplib::kinematics::kdl {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_KDL_MODEL(S) template class KDLModelTpl<S>
-
-DEFINE_TEMPLATE_KDL_MODEL(float);
-DEFINE_TEMPLATE_KDL_MODEL(double);
-
 template <typename S>
 KDLModelTpl<S>::KDLModelTpl(const std::string &urdf_filename,
                             const std::vector<std::string> &link_names,
@@ -33,6 +27,8 @@ KDLModelTpl<S>::KDLModelTpl(const std::string &urdf_filename,
   for (size_t i = 0; i < joint_names.size(); i++)
     user_joint_idx_mapping_[joint_names[i]] = i;
   urdf::ModelInterfaceSharedPtr urdf_model = urdf::parseURDFFile(urdf_filename);
+  if (!urdf_model)
+    throw std::invalid_argument("The XML stream does not contain a valid URDF model.");
   treeFromUrdfModel(urdf_model, tree_, tree_root_name_, verbose);
 
   KDL::SegmentMap segment_map = tree_.getSegments();
@@ -184,5 +180,11 @@ std::tuple<VectorX<S>, int> KDLModelTpl<S>::TreeIKNRJL(
 
   return {q1, retval};
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_KDL_MODEL(S) template class KDLModelTpl<S>
+
+DEFINE_TEMPLATE_KDL_MODEL(float);
+DEFINE_TEMPLATE_KDL_MODEL(double);
 
 }  // namespace mplib::kinematics::kdl

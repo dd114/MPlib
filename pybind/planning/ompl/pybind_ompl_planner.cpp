@@ -22,7 +22,7 @@ void build_pyompl_planner(py::module &m) {
   auto PyOMPLPlanner = py::class_<OMPLPlanner, std::shared_ptr<OMPLPlanner>>(
       m, "OMPLPlanner", DOC(mplib, planning, ompl, OMPLPlannerTpl));
   PyOMPLPlanner
-      .def(py::init<const PlanningWorldTplPtr<S> &>(), py::arg("world"),
+      .def(py::init<const PlanningWorldTplPtr<S> &>(), py::arg("world").none(false),
            DOC(mplib, planning, ompl, OMPLPlannerTpl, OMPLPlannerTpl))
 
       .def("plan", &OMPLPlanner::plan, py::arg("start_state"), py::arg("goal_states"),

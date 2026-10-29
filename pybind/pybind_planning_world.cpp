@@ -42,8 +42,9 @@ void build_pyplanning_world(py::module &pymp) {
            DOC(mplib, PlanningWorldTpl, getArticulation))
       .def("has_articulation", &PlanningWorld::hasArticulation, py::arg("name"),
            DOC(mplib, PlanningWorldTpl, hasArticulation))
-      .def("add_articulation", &PlanningWorld::addArticulation, py::arg("model"),
-           py::arg("planned") = false, DOC(mplib, PlanningWorldTpl, addArticulation))
+      .def("add_articulation", &PlanningWorld::addArticulation,
+           py::arg("model").none(false), py::arg("planned") = false,
+           DOC(mplib, PlanningWorldTpl, addArticulation))
       .def("remove_articulation", &PlanningWorld::removeArticulation, py::arg("name"),
            DOC(mplib, PlanningWorldTpl, removeArticulation))
       .def("is_articulation_planned", &PlanningWorld::isArticulationPlanned,
@@ -60,11 +61,11 @@ void build_pyplanning_world(py::module &pymp) {
            DOC(mplib, PlanningWorldTpl, hasObject))
       .def("add_object",
            py::overload_cast<const FCLObjectPtr &>(&PlanningWorld::addObject),
-           py::arg("fcl_obj"), DOC(mplib, PlanningWorldTpl, addObject))
+           py::arg("fcl_obj").none(false), DOC(mplib, PlanningWorldTpl, addObject))
       .def("add_object",
            py::overload_cast<const std::string &, const CollisionObjectPtr &>(
                &PlanningWorld::addObject),
-           py::arg("name"), py::arg("collision_object"),
+           py::arg("name"), py::arg("collision_object").none(false),
            DOC(mplib, PlanningWorldTpl, addObject, 2))
       .def("add_point_cloud", &PlanningWorld::addPointCloud, py::arg("name"),
            py::arg("vertices"), py::arg("resolution") = 0.01,

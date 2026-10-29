@@ -58,7 +58,8 @@ void build_pyfcl_collision_common(py::module &m) {
          collide(obj1, obj2, request, result);
          return result;
        },
-       py::arg("obj1"), py::arg("obj2"), py::arg("request") = CollisionRequest())
+       py::arg("obj1").none(false), py::arg("obj2").none(false),
+       py::arg("request") = CollisionRequest())
       .def(
           "distance",
           [](const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,
@@ -67,7 +68,8 @@ void build_pyfcl_collision_common(py::module &m) {
             distance(obj1, obj2, request, result);
             return result;
           },
-          py::arg("obj1"), py::arg("obj2"), py::arg("request") = DistanceRequest());
+          py::arg("obj1").none(false), py::arg("obj2").none(false),
+          py::arg("request") = DistanceRequest());
 }
 
 }  // namespace mplib::collision_detection::fcl

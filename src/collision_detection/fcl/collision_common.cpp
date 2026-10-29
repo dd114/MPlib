@@ -4,19 +4,6 @@
 
 namespace mplib::collision_detection::fcl {
 
-// Explicit Template Instantiation Definition ==========================================
-#define DEFINE_TEMPLATE_FCL_COMMON(S)                                                  \
-  template struct FCLObject<S>;                                                        \
-  template size_t collide<S>(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2, \
-                             const fcl::CollisionRequest<S> &request,                  \
-                             fcl::CollisionResult<S> &result);                         \
-  template S distance<S>(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,     \
-                         const fcl::DistanceRequest<S> &request,                       \
-                         fcl::DistanceResult<S> &result)
-
-DEFINE_TEMPLATE_FCL_COMMON(float);
-DEFINE_TEMPLATE_FCL_COMMON(double);
-
 template <typename S>
 FCLObject<S>::FCLObject(const std::string &name_, const Pose<S> &pose_,
                         const std::vector<fcl::CollisionObjectPtr<S>> &shapes_,
@@ -35,6 +22,8 @@ template <typename S>
 size_t collide(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,
                const fcl::CollisionRequest<S> &request,
                fcl::CollisionResult<S> &result) {
+  if (!obj1 || !obj2)
+    throw std::invalid_argument("FCLObject pointers cannot be null");
   // TODO: can request.enable_contact and request.enable_cost be used to short-circuit?
   for (const auto &shape1 : obj1->shapes)
     for (const auto &shape2 : obj2->shapes) {
@@ -58,6 +47,8 @@ size_t collide(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,
 template <typename S>
 S distance(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,
            const fcl::DistanceRequest<S> &request, fcl::DistanceResult<S> &result) {
+  if (!obj1 || !obj2)
+    throw std::invalid_argument("FCLObject pointers cannot be null");
   // TODO: can request.enable_nearest_points be used to short-circuit?
   for (const auto &shape1 : obj1->shapes)
     for (const auto &shape2 : obj2->shapes) {
@@ -71,5 +62,18 @@ S distance(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,
 
   return result.min_distance;
 }
+
+// Explicit Template Instantiation Definition ==========================================
+#define DEFINE_TEMPLATE_FCL_COMMON(S)                                                  \
+  template struct FCLObject<S>;                                                        \
+  template size_t collide<S>(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2, \
+                             const fcl::CollisionRequest<S> &request,                  \
+                             fcl::CollisionResult<S> &result);                         \
+  template S distance<S>(const FCLObjectPtr<S> &obj1, const FCLObjectPtr<S> &obj2,     \
+                         const fcl::DistanceRequest<S> &request,                       \
+                         fcl::DistanceResult<S> &result)
+
+DEFINE_TEMPLATE_FCL_COMMON(float);
+DEFINE_TEMPLATE_FCL_COMMON(double);
 
 }  // namespace mplib::collision_detection::fcl

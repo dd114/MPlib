@@ -26,7 +26,8 @@ void build_pyattached_body(py::module &pymp) {
       .def(py::init<const std::string &, const FCLObjectPtr &,
                     const ArticulatedModelPtr &, int, const Pose<S> &,
                     const std::vector<std::string> &>(),
-           py::arg("name"), py::arg("object"), py::arg("attached_articulation"),
+           py::arg("name"), py::arg("object").none(false),
+           py::arg("attached_articulation").none(false),
            py::arg("attached_link_id"), py::arg("pose"),
            py::arg("touch_links") = std::vector<std::string>(),
            DOC(mplib, AttachedBodyTpl, AttachedBodyTpl))
